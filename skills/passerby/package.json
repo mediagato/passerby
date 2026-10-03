@@ -1,0 +1,8 @@
+{
+  "name": "passerby",
+  "version": "0.1.0",
+  "private": true,
+  "main": "passerby.js",
+  "description": "What can a website you merely visited do to your local services?",
+  "license": "MIT"
+}

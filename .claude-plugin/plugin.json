@@ -1,0 +1,20 @@
+{
+  "name": "passerby",
+  "version": "0.1.0",
+  "description": "Find out what a website you merely visited can do to a service on localhost, using a real Chromium and a mandatory positive control.",
+  "author": {
+    "name": "MEDiAGATO",
+    "url": "https://github.com/mediagato"
+  },
+  "homepage": "https://github.com/mediagato/passerby",
+  "repository": "https://github.com/mediagato/passerby",
+  "license": "MIT",
+  "keywords": [
+    "claude-skill",
+    "agent-skills",
+    "security",
+    "cors",
+    "localhost",
+    "claude-code"
+  ]
+}
