@@ -3,10 +3,10 @@ name: passerby
 type: tool
 status: experimental
 license: MIT
-version: 0.1.0
+version: 0.1.1
 summary: A Claude skill that finds out what a website you merely visited can do to a service on localhost, using a real Chromium and a control that proves the probe can see a hole.
-updated: 2026-10-03
-verified: 2026-10-03
+updated: 2026-10-08
+verified: 2026-10-08
 ---
 
 # passerby
@@ -82,6 +82,7 @@ env -u ELECTRON_RUN_AS_NODE "$ELEC" . --targets 3000,8080
 - **Runs:** Electron with a hidden window (`show: false`, context isolation on, Node integration off), and two small HTTP servers bound to `127.0.0.1` only: a control server on port 8788 and a page server on port 8789 (both can be changed with `--control-port` and `--site-port`).
 - **Sends:** requests only to the control server and to the ports you name. Chromium sends a CORS preflight (`OPTIONS`) before the header and `POST` probes, so each target sees up to five requests in a run. The only write is a `POST` with the body `{"passerby":true}`.
 - **Fetches:** nothing at run time. Electron itself is downloaded by `npm install`, at your command, from the public npm registry and GitHub releases; the skill never installs it for you.
+- **Reads no credentials, sends none.** Neither `passerby.js` nor the skill reads a credential, a token, an environment variable or a file of yours, and nothing it sends carries one: the requests are a bare `GET`, a header probe and the one `POST` with the body `{"passerby":true}`. The self-test (`selftest.js`) starts Electron with a short allowlist of window and path variables (`PATH`, `HOME`, `DISPLAY`, `SystemRoot` and the like), not your environment, and checks that filter before it runs.
 - **Stores and transmits:** nothing leaves the machine and nothing is saved by the tool.
 
 ## Scope and safety

@@ -64,6 +64,20 @@ const safe = http.createServer((req, res) => {
   res.end(req.method === 'OPTIONS' ? '' : JSON.stringify({ secret: 'CANARY-the-whole-store' }));
 });
 
+// The Electron this starts is given the variables a desktop program needs to open a window and nothing else. It is NOT handed the
+// whole environment, which can hold anything private and has no business in a browser that makes network requests.
+// ELECTRON_RUN_AS_NODE is left out on purpose: inherited from a VS Code host it turns Electron into bare node, silently.
+const KEEP_ENV = [
+  'PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP',
+  'DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', // Linux
+  'SystemRoot', 'windir', 'COMSPEC', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'HOMEDRIVE', 'HOMEPATH', 'ProgramData', // Windows
+];
+function childEnv(source) {
+  const env = {};
+  for (const key of KEEP_ENV) if (source[key] !== undefined) env[key] = source[key];
+  return env;
+}
+
 // MUST be async. spawnSync blocks this process's event loop, and the two
 // fixture servers live in THIS process — so a synchronous spawn means the
 // fixtures cannot accept a single connection while Electron is running, and
@@ -71,9 +85,7 @@ const safe = http.createServer((req, res) => {
 // this skill exists to make impossible; the selftest caught it on first run.
 function runPasserby(elec, targets) {
   return new Promise((resolve) => {
-    const env = { ...process.env };
-    delete env.ELECTRON_RUN_AS_NODE; // or Electron degrades to bare node, silently
-    const child = spawn(elec, [__dirname, '--targets', targets, '--wait', '9000'], { env });
+    const child = spawn(elec, [__dirname, '--targets', targets, '--wait', '9000'], { env: childEnv(process.env) });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
@@ -88,6 +100,11 @@ function runPasserby(elec, targets) {
 }
 
 (async () => {
+  {
+    // Proof of the filter before anything runs: something private and the node switch do not pass, PATH does.
+    const probe = childEnv({ PATH: '/bin', PRIVATE_THING: 'x', ELECTRON_RUN_AS_NODE: '1' });
+    if (probe.PATH !== '/bin' || Object.keys(probe).length !== 1) { console.log('VOID: the environment filter is wrong:', Object.keys(probe)); process.exit(2); }
+  }
   const elec = findElectron();
   if (!elec) { console.log('VOID: no Electron binary found — cannot self-test'); process.exit(2); }
 

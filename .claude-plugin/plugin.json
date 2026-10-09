@@ -1,6 +1,6 @@
 {
   "name": "passerby",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Find out what a website you merely visited can do to a service on localhost, using a real Chromium and a mandatory positive control.",
   "author": {
     "name": "MEDiAGATO",
