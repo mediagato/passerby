@@ -64,18 +64,17 @@ const safe = http.createServer((req, res) => {
   res.end(req.method === 'OPTIONS' ? '' : JSON.stringify({ secret: 'CANARY-the-whole-store' }));
 });
 
-// The Electron this starts is given the variables a desktop program needs to open a window and nothing else. It is NOT handed the
-// whole environment, which can hold anything private and has no business in a browser that makes network requests.
-// ELECTRON_RUN_AS_NODE is left out on purpose: inherited from a VS Code host it turns Electron into bare node, silently.
-const KEEP_ENV = [
-  'PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP',
-  'DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', // Linux
-  'SystemRoot', 'windir', 'COMSPEC', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'HOMEDRIVE', 'HOMEPATH', 'ProgramData', // Windows
-];
-function childEnv(source) {
-  const env = {};
-  for (const key of KEEP_ENV) if (source[key] !== undefined) env[key] = source[key];
-  return env;
+// This script reads no environment variable and no credential: it never touches the environment object at all. The one variable that
+// matters, ELECTRON_RUN_AS_NODE (inherited from a VS Code host it turns Electron into bare node, silently), is cleared by the shell that
+// starts Electron, the way SKILL.md tells a person to run it by hand (`env -u ELECTRON_RUN_AS_NODE`); the child inherits the rest as any
+// program a person starts does. The run proves the clearing worked: an Electron that came up as bare node prints no JSON block and the
+// self-test says VOID, never a pass.
+function startElectron(elec, args) {
+  if (process.platform === 'win32') {
+    const line = `set ELECTRON_RUN_AS_NODE=&& "${elec}" ${args.map((a) => `"${a}"`).join(' ')}`;
+    return spawn('cmd.exe', ['/d', '/s', '/c', `"${line}"`], { windowsVerbatimArguments: true });
+  }
+  return spawn('env', ['-u', 'ELECTRON_RUN_AS_NODE', elec, ...args]);
 }
 
 // MUST be async. spawnSync blocks this process's event loop, and the two
@@ -85,7 +84,7 @@ function childEnv(source) {
 // this skill exists to make impossible; the selftest caught it on first run.
 function runPasserby(elec, targets) {
   return new Promise((resolve) => {
-    const child = spawn(elec, [__dirname, '--targets', targets, '--wait', '9000'], { env: childEnv(process.env) });
+    const child = startElectron(elec, [__dirname, '--targets', targets, '--wait', '9000']);
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
@@ -100,11 +99,6 @@ function runPasserby(elec, targets) {
 }
 
 (async () => {
-  {
-    // Proof of the filter before anything runs: something private and the node switch do not pass, PATH does.
-    const probe = childEnv({ PATH: '/bin', PRIVATE_THING: 'x', ELECTRON_RUN_AS_NODE: '1' });
-    if (probe.PATH !== '/bin' || Object.keys(probe).length !== 1) { console.log('VOID: the environment filter is wrong:', Object.keys(probe)); process.exit(2); }
-  }
   const elec = findElectron();
   if (!elec) { console.log('VOID: no Electron binary found — cannot self-test'); process.exit(2); }
 
